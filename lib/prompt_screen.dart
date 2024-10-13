@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:musicapp/random_circles.dart';
+import 'package:http/http.dart' as http;
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'dart:convert';
 
 class PromptScreen extends StatefulWidget {
   final VoidCallback showHomeScreen;
@@ -38,13 +42,18 @@ class _PromptScreenState extends State<PromptScreen> {
 
   String? _selectedMood;
 
-    // Selected mood image
+  // Selected mood image
 
   String? _selectedMoodImage;
 
+  // Playlist
 
+  List<Map<String, String>> _playlist = [];
 
-  // Functoin to toggle genre
+  // Loading state
+  bool _isLoading = false;
+
+  // Function to toggle genre
 
   void _onGenreTap(String genre) {
     setState(() {
@@ -54,6 +63,72 @@ class _PromptScreenState extends State<PromptScreen> {
         _selectedGenres.add(genre);
       }
     });
+  }
+
+  // Function submit mood and genres
+
+  Future<void> _submitSelections() async {
+    // Load enviroment variables
+    await dotenv.load(fileName: ".env");
+
+    final String? apiKey = dotenv.env['gemini_token'];
+
+    if (apiKey == null) {
+      print('There is no API  in .env');
+      return;
+    }
+
+    final model = GenerativeModel(
+      model: 'gemini-1.5-flash',
+      apiKey: apiKey,
+    );
+
+    //
+
+    if (_selectedMood == null || _selectedGenres.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Please, select a mood and at least one genre")),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final promptText = 'I want a playlist for '
+        'Mood: $_selectedMood, Genres: ${_selectedGenres.join(', ')}'
+        'in the format artist, title';
+
+    try {
+      // Генерация контента с помощью модели Gemini
+      final response = await model.generateContent([Content.text(promptText)]);
+
+      if (response.text != null) {
+        // Предполагается, что ответ содержит плейлист в формате JSON
+        final data = jsonDecode(response.text!);
+
+        // Парсинг ответа для плейлиста
+        if (data['playlist'] != null) {
+          _playlist = List<Map<String, String>>.from(data['playlist']);
+        } else {
+          throw Exception('Invalid playlist format');
+        }
+      } else {
+        throw Exception('Failed to generate content');
+      }
+    } catch (error) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $error'),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
@@ -81,7 +156,7 @@ class _PromptScreenState extends State<PromptScreen> {
             children: [
               // First expanded for moods
 
-               Expanded(
+              Expanded(
                 child: RandomCircles(
                   onMoodSelected: (mood, image) {
                     _selectedMood = mood;
@@ -179,23 +254,27 @@ class _PromptScreenState extends State<PromptScreen> {
                     Padding(
                       padding: const EdgeInsets.only(
                           top: 60.0, left: 10.0, right: 10.0),
-                      // Container for submit button
 
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 15.0),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20.0),
-                          color: const Color(0xFFFFCCCCC).withOpacity(0.8),
-                        ),
+                      // Container for submit button in GestureDetector
+                      child: GestureDetector(
+                        onTap: _submitSelections,
+                        // Container for submit button
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 15.0),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(20.0),
+                            color: const Color(0xFFFFCCCCC).withOpacity(0.8),
+                          ),
 
-                        // Submit text centered
+                          // Submit text centered
 
-                        child: Center(
-                          // Submit text
-                          child: Text(
-                            "Submit",
-                            style: GoogleFonts.inter(
-                                fontSize: 14.0, fontWeight: FontWeight.bold),
+                          child: Center(
+                            // Submit text
+                            child: Text(
+                              "Submit",
+                              style: GoogleFonts.inter(
+                                  fontSize: 14.0, fontWeight: FontWeight.bold),
+                            ),
                           ),
                         ),
                       ),
