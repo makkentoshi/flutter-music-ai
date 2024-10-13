@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:musicapp/random_circles.dart';
 
 class PromptScreen extends StatefulWidget {
   final VoidCallback showHomeScreen;
@@ -32,6 +33,16 @@ class _PromptScreenState extends State<PromptScreen> {
   // Selected Genre List
 
   final Set<String> _selectedGenres = {};
+
+  // Selected mood
+
+  String? _selectedMood;
+
+    // Selected mood image
+
+  String? _selectedMoodImage;
+
+
 
   // Functoin to toggle genre
 
@@ -70,12 +81,14 @@ class _PromptScreenState extends State<PromptScreen> {
             children: [
               // First expanded for moods
 
-              const Expanded(
-                  child: Center(
-                      child: Text(
-                "Mood",
-                style: TextStyle(color: Color(0xFFFFFFFF)),
-              ))),
+               Expanded(
+                child: RandomCircles(
+                  onMoodSelected: (mood, image) {
+                    _selectedMood = mood;
+                    _selectedMoodImage = image;
+                  },
+                ),
+              ),
 
               // Second expanded for genres and submit
 
@@ -159,6 +172,33 @@ class _PromptScreenState extends State<PromptScreen> {
                           }).toList(),
                         );
                       }),
+                    ),
+
+                    // Padding around the submit button
+
+                    Padding(
+                      padding: const EdgeInsets.only(
+                          top: 60.0, left: 10.0, right: 10.0),
+                      // Container for submit button
+
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 15.0),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20.0),
+                          color: const Color(0xFFFFCCCCC).withOpacity(0.8),
+                        ),
+
+                        // Submit text centered
+
+                        child: Center(
+                          // Submit text
+                          child: Text(
+                            "Submit",
+                            style: GoogleFonts.inter(
+                                fontSize: 14.0, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ),
                     )
                   ],
                 ),
