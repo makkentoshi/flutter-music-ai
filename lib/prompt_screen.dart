@@ -102,26 +102,47 @@ class _PromptScreenState extends State<PromptScreen> {
         'in the format artist, title';
 
     try {
-      // Генерация контента с помощью модели Gemini
+      // Content
+
       final response = await model.generateContent([Content.text(promptText)]);
 
-      if (response.text != null) {
-        // Предполагается, что ответ содержит плейлист в формате JSON
-        final data = jsonDecode(response.text!);
+      print('Response text: ${response.text}');
 
-        // Парсинг ответа для плейлиста
-        if (data['playlist'] != null) {
-          _playlist = List<Map<String, String>>.from(data['playlist']);
-        } else {
-          throw Exception('Invalid playlist format');
-        }
+      if (response.text != null) {
+        // Markdown 
+        String responseText = response.text!;
+
+        // Seperate lines
+        List<String> lines = responseText.split('\n');
+
+        // Filter out lines that don't contain songs
+        List<String> songs =
+            lines.where((line) => line.contains(' - ')).toList();
+
+        
+        _playlist = songs.map((song) {
+          var parts = song.split(' - ');
+          return {
+            'artist': parts[0].trim(), 
+            'title': parts.length > 1
+                ? parts[1].replaceAll('"', '').trim()
+                : 'Unknown title'
+          };
+        }).toList();
+
+       
+        print('Parsed playlist: $_playlist');
       } else {
         throw Exception('Failed to generate content');
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+    
+      print('Error: $error');
+      print('StackTrace: $stackTrace');
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error: $error'),
+          content: Text('Error: $error'), 
         ),
       );
     } finally {
